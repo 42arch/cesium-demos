@@ -44,18 +44,25 @@ const drawBtns = reactive([
   },
   {
     id: 'clear',
-    label: '清除'
+    label: '清除',
+    once: true
   }
 ])
 
 const handleClick = (currentBtn) => {
   drawBtns.forEach((btn) => {
     if (btn.id === currentBtn.id) {
+      if (currentBtn.once) {
+        btn.active = false
+        return
+      }
       btn.active = !btn.active
+    } else {
+      btn.active = false
     }
   })
 
-  if (currentBtn.active) {
+  if (currentBtn.active || currentBtn.once) {
     bus.emit('operate', currentBtn)
   }
 }

@@ -8,11 +8,18 @@ class DrawingTool {
     this.drawing = false
     this.handler = null
     this.currentMode = 'static'
+
+    this.callback = null
   }
 
   drawPoint() {
+    this.handler?.destroy()
     const viewer = this.viewer
-    viewer.screenSpaceEventHandler.setInputAction((e) => {
+
+    this.handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+    const handler = this.handler
+
+    handler.setInputAction((e) => {
       const ray = viewer.camera.getPickRay(e.position)
       const cartesian = viewer.scene.globe.pick(ray, viewer.scene)
       const ellipsoid = viewer.scene.globe.ellipsoid
@@ -54,11 +61,15 @@ class DrawingTool {
   }
 
   drawLine() {
+    this.handler?.destroy()
+
     const viewer = this.viewer
     let positions = []
     let tempPositions = []
     let tempLine
-    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+    this.handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+    const handler = this.handler
+
     viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(
       Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
     )
@@ -114,8 +125,6 @@ class DrawingTool {
       const ray = viewer.camera.getPickRay(e.position)
       const position = viewer.scene.globe.pick(ray, viewer.scene)
 
-      console.log('right click', positions)
-
       const polyline = viewer.entities.add({
         polyline: {
           positions: positions,
@@ -133,9 +142,91 @@ class DrawingTool {
     }, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
   }
 
-  drawPolygon() {}
+  drawPolygon() {
+    this.handler?.destroy()
+
+    const viewer = this.viewer
+    this.handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+    const handler = this.handler
+
+    let positions = []
+    let tempPositions = []
+    let tempPolygon
+
+    handler.setInputAction((e) => {
+      const ray = viewer.camera.getPickRay(e.endPosition)
+      const position = viewer.scene.globe.pick(ray, viewer.scene)
+      if (!Cesium.defined(position)) {
+        return
+      }
+
+      tempPositions = [...positions, position]
+
+      if (tempPositions.length >= 3) {
+        if (!Cesium.defined(tempPolygon)) {
+          tempPolygon = viewer.entities.add({
+            polygon: {
+              hierarchy: new Cesium.CallbackProperty(
+                () => ({
+                  positions: tempPositions
+                }),
+                false
+              ),
+              material: Cesium.Color.YELLOWGREEN.withAlpha(0.6),
+              outline: true,
+              outlineColor: Cesium.Color.WHITE
+              // clampToGround: true
+            }
+          })
+        } else {
+          positions.push(position)
+          positions.pop()
+        }
+      }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
+
+    handler.setInputAction((e) => {
+      const ray = viewer.camera.getPickRay(e.position)
+      const position = viewer.scene.globe.pick(ray, viewer.scene)
+      positions.push(position)
+
+      const point = viewer.entities.add({
+        position: position,
+        point: {
+          pixelSize: 6,
+          color: Cesium.Color.BLUEVIOLET,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2
+        }
+      })
+      this.ids.push(point.id)
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+
+    handler.setInputAction((e) => {
+      const ray = viewer.camera.getPickRay(e.position)
+      const position = viewer.scene.globe.pick(ray, viewer.scene)
+
+      const polygon = viewer.entities.add({
+        polygon: {
+          hierarchy: { positions },
+          material: Cesium.Color.YELLOWGREEN.withAlpha(0.6),
+          outline: true,
+          outlineColor: Cesium.Color.WHITE
+          // clampToGround: true
+        }
+      })
+
+      this.ids.push(polygon.id)
+      viewer.entities.remove(tempPolygon.id)
+      positions = []
+      tempPositions = []
+    }, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
+  }
 
   clearAll() {
+    this.viewer.entities.removeAll()
+    this.handler?.destroy()
+    this.handler = null
     this.ids = []
   }
 }

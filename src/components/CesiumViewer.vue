@@ -15,24 +15,22 @@ let draw
 let viewer
 
 const handleOperate = ({ id }) => {
-  console.log('click', id)
-
   switch (id) {
     case 'point': {
       draw.drawPoint()
       break
     }
-    case 'line': {
+    case 'line':
       draw.drawLine()
       break
-    }
+    case 'polygon':
+      draw.drawPolygon()
+      break
     case 'clear': {
       draw.clearAll()
       break
     }
     case 'zoomIn': {
-      // console.log('zoomIn', viewer.camera)
-      // viewer.camera.zoomIn()
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(
           defaultView.longitude,
@@ -52,7 +50,6 @@ const handleOperate = ({ id }) => {
       break
     case 'resetZoom':
       {
-        console.log('default', defaultView)
         viewer.camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(
             defaultView.longitude,
