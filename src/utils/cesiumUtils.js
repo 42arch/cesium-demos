@@ -1,5 +1,9 @@
 import * as Cesium from 'cesium'
 
+export const initView = () => {}
+
+export const resetView = () => {}
+
 export const getViewPosition = (viewer) => {
   const ellipsoid = viewer.scene.globe.ellipsoid
   const position = viewer.camera.position

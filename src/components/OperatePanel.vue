@@ -11,18 +11,21 @@
       </button>
     </div>
   </div>
-
-  <!-- <div class="custom-widget">
-    <div class="zoom-widget">
-      <el-icon class="icon" @click="handleClick('zoomIn')"><ZoomIn /></el-icon>
-      <el-icon class="icon" @click="handleClick('zoomOut')"
-        ><ZoomOut
-      /></el-icon>
-      <el-icon class="icon" @click="handleClick('resetZoom')"
-        ><FullScreen
-      /></el-icon>
+  <div class="main-panel">
+    <div class="group" v-for="(item, index) in operateBtns" :key="index">
+      <span class="label">{{ item.label }}</span>
+      <div class="btns">
+        <button
+          :class="['btn', it.active ? 'active' : '']"
+          v-for="(it, idx) in item.children"
+          :key="it.label"
+          @click="handleOperateClick(it)"
+        >
+          {{ it.label }}
+        </button>
+      </div>
     </div>
-  </div> -->
+  </div>
 </template>
 
 <script setup>
@@ -49,6 +52,48 @@ const drawBtns = reactive([
   }
 ])
 
+const operateBtns = reactive([
+  {
+    label: '数据',
+    children: [
+      {
+        id: 'geojson',
+        label: 'GeoJSON'
+      },
+      {
+        id: 'topojson',
+        label: 'TopoJSON'
+      },
+      {
+        id: 'osm_buildings',
+        label: 'OSM建筑物'
+      }
+    ]
+  },
+  {
+    label: '运动',
+    children: [
+      {
+        id: 'fly-track',
+        label: '飞行追踪'
+      }
+    ]
+  },
+  {
+    label: '分析',
+    children: [
+      {
+        id: 'heatmap',
+        label: '热力图'
+      },
+      {
+        id: 'heatmap-3d',
+        label: '3D热力图'
+      }
+    ]
+  }
+])
+
 const handleClick = (currentBtn) => {
   drawBtns.forEach((btn) => {
     if (btn.id === currentBtn.id) {
@@ -66,13 +111,32 @@ const handleClick = (currentBtn) => {
     bus.emit('operate', currentBtn)
   }
 }
+
+const handleOperateClick = (currentBtn) => {
+  operateBtns.forEach((group) => {
+    group.children.forEach((btn) => {
+      if (btn.id === currentBtn.id) {
+        if (currentBtn.once) {
+          btn.active = false
+          return
+        }
+        btn.active = !btn.active
+      } else {
+        btn.active = false
+      }
+    })
+  })
+  // if ( currentBtn.once) {
+  bus.emit('operate', currentBtn)
+  // }
+}
 </script>
 
 <style scoped>
 .header-panel {
   position: absolute;
   top: 12px;
-  right: 12px;
+  left: 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -82,11 +146,32 @@ const handleClick = (currentBtn) => {
   user-select: none;
 }
 
+.main-panel {
+  position: absolute;
+  width: 240px;
+  left: 12px;
+  top: 64px;
+  z-index: 999;
+  user-select: none;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.label {
+  color: #fff;
+  padding-bottom: 6px;
+}
+
 .btns {
   display: flex;
   flex-direction: row;
   gap: 12px;
-  height: 32px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -94,6 +179,7 @@ const handleClick = (currentBtn) => {
   color: #fff;
   outline: none;
   border-style: none;
+  height: 32px;
   padding: 2px 8px;
   cursor: pointer;
 }

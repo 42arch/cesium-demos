@@ -8,28 +8,94 @@ import * as Cesium from 'cesium'
 import bus from '@/utils/eventBus'
 import { getViewPosition } from '@/utils/cesiumUtils'
 import DrawingTool from '@/utils/DrawingTool'
+import {
+  loadGeoJSON,
+  removeGeoJSON,
+  loadTopoJSON,
+  removeTopoJSON,
+  loadOSMBuildings,
+  removeOSMBuildings
+} from '@/utils/dataSource'
+import { startFlyTrack, stopFlyTrack } from '@/examples/movement'
+import {
+  loadHeatmap,
+  removeHeatmap,
+  load3DHeatmap,
+  remove3DHeatmap
+} from '@/examples/heatmap'
 
 let defaultView = {}
 let currentView = {}
 let draw
 let viewer
 
-const handleOperate = ({ id }) => {
+const handleOperate = ({ id, active }) => {
   switch (id) {
     case 'point': {
-      draw.drawPoint()
+      active && draw.drawPoint()
       break
     }
     case 'line':
-      draw.drawLine()
+      active && draw.drawLine()
       break
     case 'polygon':
-      draw.drawPolygon()
+      active && draw.drawPolygon()
       break
     case 'clear': {
       draw.clearAll()
       break
     }
+    case 'geojson': {
+      if (active) {
+        loadGeoJSON(viewer, '/data/china.json')
+      } else {
+        removeGeoJSON(viewer)
+      }
+      break
+    }
+    case 'topojson': {
+      if (active) {
+        loadTopoJSON(viewer, '/data/us.topojson')
+      } else {
+        removeTopoJSON(viewer)
+      }
+      break
+    }
+    case 'osm_buildings': {
+      if (active) {
+        loadOSMBuildings(viewer, '/data/us.topojson')
+      } else {
+        removeOSMBuildings(viewer)
+      }
+      break
+    }
+    case 'fly-track': {
+      if (active) {
+        startFlyTrack(viewer)
+      } else {
+        stopFlyTrack(viewer)
+      }
+      break
+    }
+
+    case 'heatmap': {
+      if (active) {
+        loadHeatmap(viewer)
+      } else {
+        removeHeatmap(viewer)
+      }
+      break
+    }
+
+    case 'heatmap-3d': {
+      if (active) {
+        load3DHeatmap(viewer)
+      } else {
+        remove3DHeatmap(viewer)
+      }
+      break
+    }
+
     case 'zoomIn': {
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(
@@ -49,21 +115,6 @@ const handleOperate = ({ id }) => {
       viewer.camera.zoomOut()
       break
     case 'resetZoom':
-      {
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(
-            defaultView.longitude,
-            defaultView.latitude,
-            defaultView.height
-          ),
-          orientation: {
-            heading: Cesium.Math.toRadians(0.0),
-            pitch: Cesium.Math.toRadians(-90.0),
-            roll: 0.0
-          }
-        })
-      }
-
       break
 
     default:
