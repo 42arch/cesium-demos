@@ -80,6 +80,19 @@ const operateBtns = reactive([
     ]
   },
   {
+    label: '效果',
+    children: [
+      {
+        id: 'diffuse',
+        label: '扩散'
+      },
+      {
+        id: 'scan',
+        label: '扫描'
+      }
+    ]
+  },
+  {
     label: '分析',
     children: [
       {

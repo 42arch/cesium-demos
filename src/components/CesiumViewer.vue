@@ -23,6 +23,7 @@ import {
   load3DHeatmap,
   remove3DHeatmap
 } from '@/examples/heatmap'
+import { loadDiffuseEffect, loadVerticalLineEffect } from '@/examples/effects'
 
 let defaultView = {}
 let currentView = {}
@@ -92,6 +93,13 @@ const handleOperate = ({ id, active }) => {
         load3DHeatmap(viewer)
       } else {
         remove3DHeatmap(viewer)
+      }
+      break
+    }
+
+    case 'scan': {
+      if (active) {
+        loadVerticalLineEffect(viewer)
       }
       break
     }
