@@ -23,7 +23,14 @@ import {
   load3DHeatmap,
   remove3DHeatmap
 } from '@/examples/heatmap'
-import { loadDiffuseEffect, loadVerticalLineEffect } from '@/examples/effects'
+import {
+  loadRadarLineEffect,
+  removeRadarLineEffect,
+  loadDiffuseEffect,
+  removeDiffuseEffect,
+  loadVerticalLineEffect,
+  removeVerticalLineEffect
+} from '@/examples/effects'
 
 let defaultView = {}
 let currentView = {}
@@ -97,9 +104,28 @@ const handleOperate = ({ id, active }) => {
       break
     }
 
-    case 'scan': {
+    case 'radar-line': {
+      if (active) {
+        loadRadarLineEffect(viewer)
+      } else {
+        removeRadarLineEffect(viewer)
+      }
+      break
+    }
+    case 'diffuse': {
+      if (active) {
+        loadDiffuseEffect(viewer)
+      } else {
+        removeDiffuseEffect(viewer)
+      }
+      break
+    }
+
+    case 'vertical-line': {
       if (active) {
         loadVerticalLineEffect(viewer)
+      } else {
+        removeVerticalLineEffect(viewer)
       }
       break
     }
@@ -139,9 +165,9 @@ onMounted(async () => {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NTVhOWEwNi04NWJmLTQ3N2ItYWIwZS1iNTVmMDk3NzI0OWYiLCJpZCI6MTAyNjgsImlhdCI6MTY1Mjc1ODQ5NX0.E2cd4Nm84TuFQTY9TiFxIB7acMq_jQxyOODrNvLR30o'
 
   viewer = new Cesium.Viewer('cesium-container', {
-    terrainProvider: await Cesium.createWorldTerrainAsync({
-      requestWaterMask: true
-    }),
+    // terrainProvider: await Cesium.createWorldTerrainAsync({
+    //   requestWaterMask: false
+    // }),
     timeline: false,
     animation: false,
     geocoder: false,
@@ -164,6 +190,8 @@ onMounted(async () => {
       roll: 0.0
     }
   })
+
+  viewer.scene.postProcessStages.fxaa.enabled = true
 
   const { latitude, longitude, height } = getViewPosition(viewer)
   defaultView = {

@@ -84,11 +84,15 @@ const operateBtns = reactive([
     children: [
       {
         id: 'diffuse',
-        label: '扩散'
+        label: '扩散圆'
       },
       {
-        id: 'scan',
-        label: '扫描'
+        id: 'radar-line',
+        label: '雷达线'
+      },
+      {
+        id: 'vertical-line',
+        label: '垂线'
       }
     ]
   },
@@ -135,7 +139,7 @@ const handleOperateClick = (currentBtn) => {
         }
         btn.active = !btn.active
       } else {
-        btn.active = false
+        // btn.active = false
       }
     })
   })
