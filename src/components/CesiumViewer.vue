@@ -31,6 +31,7 @@ import {
   loadVerticalLineEffect,
   removeVerticalLineEffect
 } from '@/examples/effects'
+import { loadMassivePoints, removeMassivePoints } from '@/examples/massive'
 
 let defaultView = {}
 let currentView = {}
@@ -69,11 +70,19 @@ const handleOperate = ({ id, active }) => {
       }
       break
     }
-    case 'osm_buildings': {
+    case 'osm-buildings': {
       if (active) {
         loadOSMBuildings(viewer, '/data/us.topojson')
       } else {
         removeOSMBuildings(viewer)
+      }
+      break
+    }
+    case 'massive-points': {
+      if (active) {
+        loadMassivePoints(viewer)
+      } else {
+        removeMassivePoints(viewer)
       }
       break
     }
@@ -165,9 +174,9 @@ onMounted(async () => {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NTVhOWEwNi04NWJmLTQ3N2ItYWIwZS1iNTVmMDk3NzI0OWYiLCJpZCI6MTAyNjgsImlhdCI6MTY1Mjc1ODQ5NX0.E2cd4Nm84TuFQTY9TiFxIB7acMq_jQxyOODrNvLR30o'
 
   viewer = new Cesium.Viewer('cesium-container', {
-    // terrainProvider: await Cesium.createWorldTerrainAsync({
-    //   requestWaterMask: false
-    // }),
+    terrainProvider: await Cesium.createWorldTerrainAsync({
+      requestWaterMask: false
+    }),
     timeline: false,
     animation: false,
     geocoder: false,
@@ -182,17 +191,7 @@ onMounted(async () => {
   })
   draw = new DrawingTool(viewer, {})
 
-  viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(...[93.9, 30.42, 40000]),
-    orientation: {
-      heading: Cesium.Math.toRadians(0.0),
-      pitch: Cesium.Math.toRadians(-45.0),
-      roll: 0.0
-    }
-  })
-
   viewer.scene.postProcessStages.fxaa.enabled = true
-
   const { latitude, longitude, height } = getViewPosition(viewer)
   defaultView = {
     latitude,

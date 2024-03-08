@@ -65,8 +65,12 @@ const operateBtns = reactive([
         label: 'TopoJSON'
       },
       {
-        id: 'osm_buildings',
+        id: 'osm-buildings',
         label: 'OSM建筑物'
+      },
+      {
+        id: 'massive-points',
+        label: '大量点'
       }
     ]
   },
