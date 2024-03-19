@@ -97,6 +97,10 @@ const operateBtns = reactive([
       {
         id: 'vertical-line',
         label: '垂线'
+      },
+      {
+        id: 'particles',
+        label: '粒子效果'
       }
     ]
   },

@@ -32,6 +32,7 @@ import {
   removeVerticalLineEffect
 } from '@/examples/effects'
 import { loadMassivePoints, removeMassivePoints } from '@/examples/massive'
+import { loadParticles, removeParticles } from '@/examples/particles'
 
 let defaultView = {}
 let currentView = {}
@@ -75,6 +76,14 @@ const handleOperate = ({ id, active }) => {
         loadOSMBuildings(viewer, '/data/us.topojson')
       } else {
         removeOSMBuildings(viewer)
+      }
+      break
+    }
+    case 'particles': {
+      if (active) {
+        loadParticles(viewer)
+      } else {
+        removeParticles(viewer)
       }
       break
     }
@@ -174,6 +183,7 @@ onMounted(async () => {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NTVhOWEwNi04NWJmLTQ3N2ItYWIwZS1iNTVmMDk3NzI0OWYiLCJpZCI6MTAyNjgsImlhdCI6MTY1Mjc1ODQ5NX0.E2cd4Nm84TuFQTY9TiFxIB7acMq_jQxyOODrNvLR30o'
 
   viewer = new Cesium.Viewer('cesium-container', {
+    shouldAnimate: true, // 重要
     terrainProvider: await Cesium.createWorldTerrainAsync({
       requestWaterMask: false
     }),
