@@ -5,6 +5,7 @@ class DrawingTool {
     this.viewer = viewer
     this.options = options
     this.ids = []
+    this.tempIds = []
     this.drawing = false
     this.handler = null
     this.currentMode = 'static'
@@ -60,7 +61,7 @@ class DrawingTool {
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
   }
 
-  drawLine() {
+  async drawLine() {
     this.handler?.destroy()
 
     const viewer = this.viewer
@@ -105,7 +106,6 @@ class DrawingTool {
     handler.setInputAction((e) => {
       const ray = viewer.camera.getPickRay(e.position)
       const position = viewer.scene.globe.pick(ray, viewer.scene)
-
       positions.push(position)
 
       const point = viewer.entities.add({
@@ -114,17 +114,17 @@ class DrawingTool {
           pixelSize: 6,
           color: Cesium.Color.BLUEVIOLET,
           outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 2
+          outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_TERRAIN
         }
       })
       this.ids.push(point.id)
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
 
     // right click
-    handler.setInputAction((e) => {
-      const ray = viewer.camera.getPickRay(e.position)
-      const position = viewer.scene.globe.pick(ray, viewer.scene)
-
+    handler.setInputAction(async (e) => {
+      // const ray = viewer.camera.getPickRay(e.position)
+      // const position = viewer.scene.globe.pick(ray, viewer.scene)
       const polyline = viewer.entities.add({
         polyline: {
           positions: positions,
@@ -134,8 +134,42 @@ class DrawingTool {
         }
       })
 
-      this.ids.push(polyline.id)
+      if (positions.length >= 2) {
+        const distPromises = positions.map(async (pos, index) => {
+          if (positions[index + 1]) {
+            const p1 = Cesium.Cartographic.fromCartesian(positions[index])
+            const p2 = Cesium.Cartographic.fromCartesian(positions[index + 1])
+            const dist = await this.getTerrainDistance(p1, p2)
+            return dist
+          } else {
+            return 0
+          }
+        })
 
+        const distances = await Promise.all(distPromises)
+        const totalDistance = distances.reduce((acc, curr) => acc + curr, 0)
+
+        let distanceText = totalDistance.toFixed(2) + 'm'
+        if (totalDistance > 10000) {
+          distanceText = (totalDistance / 1000.0).toFixed(2) + 'km'
+        }
+        const label = viewer.entities.add({
+          name: 'dist_label',
+          position: positions[positions.length - 1],
+          label: {
+            text: distanceText,
+            font: '16px sans-serif',
+            fillColor: Cesium.Color.GOLD,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            outlineWidth: 1,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(20, -20)
+          }
+        })
+        this.ids.push(label.id)
+      }
+
+      this.ids.push(polyline.id)
       positions = []
       tempPositions = []
       viewer.entities.remove(tempLine.id)
@@ -221,6 +255,58 @@ class DrawingTool {
       positions = []
       tempPositions = []
     }, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
+  }
+
+  async getTerrainDistance(point1cartographic, point2cartographic) {
+    let distance = 0
+    const geodesic = new Cesium.EllipsoidGeodesic()
+    geodesic.setEndPoints(point1cartographic, point2cartographic)
+    const s = geodesic.surfaceDistance
+    const cartoPoints = [point1cartographic]
+    for (let jj = 1000; jj < s; jj += 1000) {
+      const cartoPt = geodesic.interpolateUsingSurfaceDistance(jj)
+      cartoPoints.push(cartoPt)
+    }
+    cartoPoints.push(point2cartographic)
+    const promise = Cesium.sampleTerrain(
+      this.viewer.terrainProvider,
+      8,
+      cartoPoints
+    )
+
+    return new Promise((resolve, reject) => {
+      promise.then((updatedPositions) => {
+        for (var jj = 0; jj < updatedPositions.length - 1; jj++) {
+          var geoD = new Cesium.EllipsoidGeodesic()
+          const thisUpdatedPosition = updatedPositions[jj]
+          const nextUpdatedPosition = updatedPositions[jj + 1]
+          if (!thisUpdatedPosition.height) {
+            thisUpdatedPosition.height = 0
+          }
+          if (!nextUpdatedPosition.height) {
+            nextUpdatedPosition.height = 0
+          }
+          geoD.setEndPoints(updatedPositions[jj], updatedPositions[jj + 1])
+          var innerS = geoD.surfaceDistance
+          innerS = Math.sqrt(
+            Math.pow(innerS, 2) +
+              Math.pow(
+                updatedPositions[jj + 1].height ||
+                  0 - updatedPositions[jj].height ||
+                  0,
+                2
+              )
+          )
+          distance += innerS
+        }
+        resolve(distance)
+      })
+    })
+
+    // const startCartographic = Cesium.Cartographic.fromDegrees(...startPosition)
+    // const endCartographic = Cesium.Cartographic.fromDegrees(...endPosition)
+    // geodesic.setEndPoints(startCartographic, endCartographic)
+    // return geodesic.surfaceDistance
   }
 
   clearAll() {
