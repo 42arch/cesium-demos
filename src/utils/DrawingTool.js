@@ -36,7 +36,7 @@ class DrawingTool {
           longitude >= 0 ? absLng.toFixed(2) + 'E' : absLng.toFixed(2) + 'W'
         const lats =
           latitude >= 0 ? absLat.toFixed(2) + 'N' : absLat.toFixed(2) + 'S'
-        const text = `${lngs}, ${lats}`
+        const text = `${lngs}, ${lats}, ${height.toFixed(2)}m`
 
         const point = viewer.entities.add({
           position: Cesium.Cartesian3.fromDegrees(longitude, latitude, height),
@@ -45,18 +45,13 @@ class DrawingTool {
             color: Cesium.Color.BLUEVIOLET,
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 2
-          },
-          label: {
-            text,
-            font: '12px',
-            fillColor: Cesium.Color.CORAL,
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            outlineWidth: 1,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(0, -10)
           }
         })
         this.ids.push(point.id)
+        this.addLabel(
+          text,
+          Cesium.Cartesian3.fromDegrees(longitude, latitude, height)
+        )
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
   }
@@ -153,20 +148,7 @@ class DrawingTool {
         if (totalDistance > 10000) {
           distanceText = (totalDistance / 1000.0).toFixed(2) + 'km'
         }
-        const label = viewer.entities.add({
-          name: 'dist_label',
-          position: positions[positions.length - 1],
-          label: {
-            text: distanceText,
-            font: '16px sans-serif',
-            fillColor: Cesium.Color.GOLD,
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            outlineWidth: 1,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(20, -20)
-          }
-        })
-        this.ids.push(label.id)
+        this.addLabel(distanceText, positions[positions.length - 1])
       }
 
       this.ids.push(polyline.id)
@@ -185,6 +167,7 @@ class DrawingTool {
 
     let positions = []
     let tempPositions = []
+    let tempPoints = []
     let tempPolygon
 
     handler.setInputAction((e) => {
@@ -223,6 +206,17 @@ class DrawingTool {
       const ray = viewer.camera.getPickRay(e.position)
       const position = viewer.scene.globe.pick(ray, viewer.scene)
       positions.push(position)
+      const cartographic = Cesium.Cartographic.fromCartesian(
+        positions[positions.length - 1]
+      )
+      const longitudeString = Cesium.Math.toDegrees(cartographic.longitude)
+      const latitudeString = Cesium.Math.toDegrees(cartographic.latitude)
+      const heightString = cartographic.height
+      tempPoints.push({
+        lon: longitudeString,
+        lat: latitudeString,
+        hei: heightString
+      })
 
       const point = viewer.entities.add({
         position: position,
@@ -252,9 +246,31 @@ class DrawingTool {
 
       this.ids.push(polygon.id)
       viewer.entities.remove(tempPolygon.id)
+
+      const area = this.getArea(positions)
+      const centerPoint = this.getCenterOfGravityPoint(positions)
+      this.addLabel(area, centerPoint)
+
       positions = []
       tempPositions = []
     }, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
+  }
+
+  addLabel(text, position) {
+    const label = this.viewer.entities.add({
+      name: 'dist_label',
+      position: position,
+      label: {
+        text: text,
+        font: '16px sans-serif',
+        fillColor: Cesium.Color.GOLD,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        outlineWidth: 1,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(20, -20)
+      }
+    })
+    this.ids.push(label.id)
   }
 
   async getTerrainDistance(point1cartographic, point2cartographic) {
@@ -307,6 +323,87 @@ class DrawingTool {
     // const endCartographic = Cesium.Cartographic.fromDegrees(...endPosition)
     // geodesic.setEndPoints(startCartographic, endCartographic)
     // return geodesic.surfaceDistance
+  }
+
+  distance(point1, point2) {
+    const point1cartographic = Cesium.Cartographic.fromCartesian(point1)
+    const point2cartographic = Cesium.Cartographic.fromCartesian(point2)
+    /**根据经纬度计算出距离**/
+    const geodesic = new Cesium.EllipsoidGeodesic()
+    geodesic.setEndPoints(point1cartographic, point2cartographic)
+    let s = geodesic.surfaceDistance
+    //console.log(Math.sqrt(Math.pow(distance, 2) + Math.pow(endheight, 2)));
+    //返回两点之间的距离
+    s = Math.sqrt(
+      Math.pow(s, 2) +
+        Math.pow(point2cartographic.height - point1cartographic.height, 2)
+    )
+    return s
+  }
+
+  getArea(points) {
+    let res = 0
+    for (let i = 0; i < points.length - 2; i++) {
+      const j = (i + 1) % points.length
+      const k = (i + 2) % points.length
+      const totalAngle = this.angle(points[i], points[j], points[k])
+      const dis_temp1 = this.distance(points[j], points[0])
+      const dis_temp2 = this.distance(points[k], points[0])
+      // res += (dis_temp1 * dis_temp2 * Math.sin(totalAngle)) / 2
+      res += (dis_temp1 * dis_temp2 * Math.abs(Math.sin(totalAngle))) / 2
+    }
+
+    if (res < 1000000) {
+      res = Math.abs(res).toFixed(4) + ' m²'
+    } else {
+      res = Math.abs((res / 1000000.0).toFixed(4)) + ' km²'
+    }
+
+    return res
+  }
+
+  getCenterOfGravityPoint(mPoints) {
+    var centerPoint = mPoints[0]
+    for (var i = 1; i < mPoints.length; i++) {
+      centerPoint = Cesium.Cartesian3.midpoint(
+        centerPoint,
+        mPoints[i],
+        new Cesium.Cartesian3()
+      )
+    }
+    return centerPoint
+  }
+
+  angle(p1, p2, p3) {
+    var bearing21 = this.bearing(p2, p1)
+    var bearing23 = this.bearing(p2, p3)
+    var angle = bearing21 - bearing23
+    if (angle < 0) {
+      angle += 360
+    }
+    return angle
+  }
+
+  bearing(from, to) {
+    from = Cesium.Cartographic.fromCartesian(from)
+    to = Cesium.Cartographic.fromCartesian(to)
+
+    var lat1 = from.latitude
+    var lon1 = from.longitude
+    var lat2 = to.latitude
+    var lon2 = to.longitude
+    var angle = -Math.atan2(
+      Math.sin(lon1 - lon2) * Math.cos(lat2),
+      Math.cos(lat1) * Math.sin(lat2) -
+        Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2)
+    )
+    if (angle < 0) {
+      angle += Math.PI * 2.0
+    }
+    var degreesPerRadian = 180.0 / Math.PI //弧度转化为角度
+
+    angle = angle * degreesPerRadian //角度
+    return angle
   }
 
   clearAll() {
